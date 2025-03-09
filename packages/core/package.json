@@ -1,0 +1,44 @@
+{
+    "name": "@blox/core",
+    "version": "0.1.0",
+    "description": "Core UI components for Blox",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "files": [
+      "dist"
+    ],
+    "scripts": {
+      "build": "bun build ./src/index.ts --outdir ./dist --target node --format esm",
+      "dev": "bun build ./src/index.ts --outdir ./dist --target node --format esm --watch",
+      "lint": "bun eslint 'src/**/*.{ts,tsx}'",
+      "test": "bun test",
+      "clean": "rm -rf dist",
+      "prepublish": "bun run clean && bun run build"
+    },
+    "peerDependencies": {
+      "react": ">=19.0.0",
+      "react-dom": ">=19.0.0"
+    },
+    "dependencies": {
+      "tailwindcss": "^3.0.0"
+    },
+    "devDependencies": {
+      "@types/react": "^19.0.0",
+      "@types/react-dom": "^19.0.0",
+      "eslint": "^8.31.0",
+      "eslint-plugin-react": "^7.31.0",
+      "eslint-plugin-react-hooks": "^4.6.0",
+      "typescript": "^5.0.0"
+    },
+    "keywords": [
+      "react",
+      "ui",
+      "components",
+      "tailwind",
+      "library",
+      "blox"
+    ],
+    "author": "",
+    "license": "MIT"
+  }

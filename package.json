@@ -1,0 +1,23 @@
+{
+  "name": "blox",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A lightweight React UI component library with Tailwind CSS",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "bun run --cwd packages/core build",
+    "lint": "bun run --cwd packages/core lint",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "author": "",
+  "license": "MIT"
+}

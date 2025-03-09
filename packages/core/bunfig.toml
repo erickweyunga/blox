@@ -1,0 +1,7 @@
+[build]
+minify = true
+sourcemap = "external"
+target = "node"
+
+[test]
+coverage = true
