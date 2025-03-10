@@ -1,7 +1,7 @@
 {
-  "name": "@bloxi/core",
+  "name": "@bloxi/components",
   "version": "0.1.0",
-  "description": "A lightweight reactive UI framework core engine",
+  "description": "UI component library for the Bloxi framework",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
@@ -18,21 +18,24 @@
   },
   "keywords": [
     "ui",
-    "framework",
+    "components",
     "reactive",
-    "virtual-dom",
-    "components"
+    "framework"
   ],
   "author": "Bloxi Team",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bloxi/core.git"
+    "url": "https://github.com/bloxi/components.git"
   },
   "publishConfig": {
     "access": "public"
   },
+  "peerDependencies": {
+    "@bloxi/core": "^0.1.0"
+  },
   "devDependencies": {
+    "@bloxi/core": "^0.1.0",
     "@rollup/plugin-commonjs": "^22.0.0",
     "@rollup/plugin-node-resolve": "^13.3.0",
     "@rollup/plugin-typescript": "^8.3.2",

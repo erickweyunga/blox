@@ -1,195 +1,149 @@
-# @blox/core
+# @bloxi/core
 
-A lightweight React component library with Tailwind CSS for rapid UI development.
+A lightweight, reactive UI framework built from scratch.
 
 ## Features
 
-- 50+ React components built with Tailwind CSS
-- Context-based state management
-- Themeable with CSS variables
-- TypeScript support
-- Responsive design
+- 🔄 **Reactive by Design**: State changes automatically update your UI
+- 🧩 **Component-Based**: Build complex UIs from simple, reusable components
+- 🔍 **Virtual DOM**: Efficient rendering through an optimized diffing algorithm
+- 🚀 **Lightweight**: Small bundle size with zero dependencies
+- 📦 **Modular**: Use only what you need
+- 🔒 **Type-Safe**: Built with TypeScript for excellent developer experience
 
 ## Installation
 
 ```bash
-# Using bun
-bun add @blox/core
+# Install core framework
+npm install @bloxi/core
 
-# Using npm
-npm install @blox/core
-
-# Using yarn
-yarn add @blox/core
+# Optionally install component library
+npm install @bloxi/components
 ```
 
-## Usage
+## Quick Start
 
-Wrap your application with the providers:
+```tsx
+import { render, component, state } from "@bloxi/core";
+import { Box, Text, Button } from "@bloxi/components";
 
-```jsx
-import { ThemeProvider, AppProvider } from '@blox/core';
+// Create a simple counter component
+const Counter = component({
+  name: "Counter",
 
-function App() {
-  return (
-    <ThemeProvider>
-      <AppProvider>
-        <YourApp />
-      </AppProvider>
-    </ThemeProvider>
-  );
-}
+  setup() {
+    // Create reactive state
+    const count = state(0);
+
+    // Event handlers
+    const increment = () => count.value++;
+
+    return { count, increment };
+  },
+
+  render({ count, increment }) {
+    return Box({
+      padding: "1rem",
+      children: [
+        Text({ children: `Count: ${count.value}` }),
+        Button({
+          onClick: increment,
+          children: "Increment",
+        }),
+      ],
+    });
+  },
+});
+
+// Mount the app
+const rootElement = document.getElementById("root");
+render(Counter(), rootElement);
 ```
 
-Use components:
+## Core Concepts
 
-```jsx
-import {
-  Container,
-  Row,
-  Column,
-  Card,
-  CardHeader,
-  CardBody,
-  CardFooter,
-  Button,
-  Text,
-  useAppContext
-} from '@blox/core';
+### Components
 
-function Counter() {
-  const [count, setCount] = useAppContext('count', 0);
+Components are the building blocks of your UI. Each component encapsulates its own state and rendering logic.
 
-  return (
-    <Container>
-      <Card>
-        <CardHeader>
-          <Text variant="h2">Counter</Text>
-        </CardHeader>
-        <CardBody>
-          <Text>Count: {count}</Text>
-        </CardBody>
-        <CardFooter>
-          <Row gap="sm">
-            <Button onClick={() => setCount(count - 1)}>Decrement</Button>
-            <Button onClick={() => setCount(count + 1)}>Increment</Button>
-          </Row>
-        </CardFooter>
-      </Card>
-    </Container>
-  );
-}
+```tsx
+const MyComponent = component({
+  name: "MyComponent",
+
+  // Initialize component state and behavior
+  setup(props) {
+    // Logic here...
+    return {
+      /* state and methods */
+    };
+  },
+
+  // Render the component
+  render(setupResult) {
+    return /* UI elements */;
+  },
+});
 ```
 
-## Component List
+### Reactive State
 
-### Layout Components
-- Container
-- Row
-- Column
-- Grid
-- Box
-- Spacer
-- Divider
-- Stack
-- AspectRatio
-- ScrollView
-- Flex
-- Overlay
+State in Bloxi is reactive - when it changes, your UI updates automatically.
 
-### UI Elements
-- Text
-- Button
-- Card
-- Image
-- Icon
-- Badge
-- Avatar
-- Alert
-- Progress
-- Skeleton
-- Tooltip
-- Modal
-- Drawer
-- Tabs
-- Breadcrumbs
-- Pagination
-- Chip
-- Marquee
-- Toast
-- Rating
+```tsx
+const count = state(0); // Create reactive state
 
-### Form Components
-- Input
-- Checkbox
-- Radio
-- Select
-- Switch
-- Slider
-- FileInput
-- DatePicker
-- Label
-- ValidationMessage
+// Reading state
+console.log(count.value); // 0
 
-### Data Display
-- Table
-- List
-- ListItem
-- Accordion
-- Tree
-- Chart
-- Timeline
-- Carousel
+// Updating state (triggers UI updates)
+count.value = 5;
 
-### Advanced
-- Animate
-- Fetch
-- Portal
-- DragDrop
-- Resizable
-
-## State Management
-
-The library provides a simple context-based state management system:
-
-```jsx
-import { useAppContext } from '@blox/core';
-
-// In your component
-const [value, setValue] = useAppContext('someKey', initialValue);
-
-// Update state
-setValue(newValue);
+// Compute derived state
+const doubled = computed(() => count.value * 2);
 ```
 
-## Theming
+### Lifecycle Hooks
 
-Customize the theme by using the ThemeProvider:
+Respond to component lifecycle events.
 
-```jsx
-import { ThemeProvider, defaultTheme } from '@blox/core';
+```tsx
+import { component, onMount, onUnmount } from "@bloxi/core";
 
-const myTheme = {
-  ...defaultTheme,
-  colors: {
-    ...defaultTheme.colors,
-    primary: '#007bff',
-    secondary: '#6c757d',
-  }
-};
+const MyComponent = component({
+  setup() {
+    onMount(() => {
+      console.log("Component mounted");
 
-function App() {
-  return (
-    <ThemeProvider initialTheme={myTheme}>
-      <YourApp />
-    </ThemeProvider>
-  );
-}
+      // Setup event listeners, timers, etc.
+      const timer = setInterval(() => {
+        // Do something...
+      }, 1000);
+
+      onUnmount(() => {
+        // Clean up
+        clearInterval(timer);
+      });
+    });
+
+    return {};
+  },
+  render() {
+    return /* UI elements */;
+  },
+});
 ```
+
+## Package Structure
+
+The Bloxi framework is organized into several packages:
+
+- **@bloxi/core**: Core framework functionality (virtual DOM, reactivity, components)
+- **@bloxi/components**: UI component library built on top of core
+- **@bloxi/cli**: Command-line tools for project scaffolding (coming soon)
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a PR.
+Contributions are welcome! Please feel free to submit a pull request.
 
 ## License
 

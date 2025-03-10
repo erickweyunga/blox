@@ -1,23 +1,20 @@
 {
-  "name": "blox",
-  "version": "0.1.0",
+  "name": "bloxi",
   "private": true,
-  "description": "A lightweight React UI component library with Tailwind CSS",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "examples/*"
   ],
   "scripts": {
-    "build": "bun run --cwd packages/core build",
-    "lint": "bun run --cwd packages/core lint",
-    "test": "bun test"
+    "bootstrap": "lerna bootstrap",
+    "build": "lerna run build",
+    "dev": "lerna run dev --parallel",
+    "test": "lerna run test",
+    "lint": "lerna run lint",
+    "clean": "lerna clean",
+    "publish": "lerna publish"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
-  },
-  "engines": {
-    "bun": ">=1.0.0"
-  },
-  "author": "",
-  "license": "MIT"
+    "lerna": "^5.1.4"
+  }
 }
