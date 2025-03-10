@@ -1,8 +1,6 @@
-// Re-export only what's needed for the public API
-// This creates a clean separation between internal implementation and public interface
-
 import { component, ComponentOptions, ComponentFactory } from './component/component';
-import { state, effect, State } from './reactivity/state';
+import { state, State } from './reactivity/state';
+import { effect } from './reactivity/effect';
 import { computed, ComputedState } from './reactivity/computed';
 import { onMount, onUpdate, onUnmount } from './component/lifecycle';
 import { render } from './engine/renderer';

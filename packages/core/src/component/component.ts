@@ -1,5 +1,6 @@
 import { createComponentVNode, VNode } from '../engine/vdom';
-import { effect, unwrapState } from '../reactivity/state';
+import { unwrapState } from '../reactivity/state';
+import { effect } from '../reactivity/effect';
 import { createLifecycleHooks, LifecycleHooks } from './lifecycle';
 
 /**

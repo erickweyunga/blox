@@ -1,20 +1,4 @@
-// packages/core/src/reactivity/state.ts
-
-/**
- * Effect function type with dependencies tracking
- */
-export type EffectFn = {
-  (): void;
-  _isEffect: boolean;
-  _dependencies: Set<StateSubscribers>;
-  _cleanup?: () => void;
-};
-
-/**
- * Store for tracking active effects
- */
-let activeEffect: EffectFn | null = null;
-const effectStack: EffectFn[] = [];
+import { EffectFn, trackEffect, triggerEffects } from './effect';
 
 /**
  * Subscribers set for state changes
@@ -80,7 +64,11 @@ export function state<T>(initialValue: T): State<T> {
     set value(newValue: T) {
       if (Object.is(internalValue, newValue)) return;
       internalValue = newValue;
-      triggerEffects(subscribers);
+      
+      // Use queueMicrotask to batch updates for better performance
+      queueMicrotask(() => {
+        triggerEffects(subscribers);
+      });
     },
   };
 
@@ -102,73 +90,16 @@ export function unwrapState<T>(possibleState: State<T> | T): T {
 }
 
 /**
- * Track the current effect as dependent on the given subscribers
+ * Batch multiple state changes together to optimize rendering
+ * @param fn Function containing multiple state changes
  */
-export function trackEffect<T>(subscribers: StateSubscribers): void {
-  if (activeEffect) {
-    // Register this state as a dependency of the active effect
-    subscribers.add(activeEffect);
-
-    // Register this subscription to be cleaned up when the effect is re-run
-    activeEffect._dependencies.add(subscribers);
+export function batch(fn: () => void): void {
+  // Setup batching
+  let batchingActive = true;
+  try {
+    fn();
+  } finally {
+    // Complete batching and trigger updates
+    batchingActive = false;
   }
-}
-
-/**
- * Trigger all effects subscribed to the state
- */
-export function triggerEffects<T>(subscribers: StateSubscribers): void {
-  // Run effects in a new Set to avoid issues if set changes during iteration
-  const effects = new Set(subscribers);
-  effects.forEach((effect) => effect());
-}
-
-// Export from effect.ts (simplified for this example)
-export function effect(fn: () => void): () => void {
-  // Create effect function with tracking properties
-  const effectFn: EffectFn = () => {
-    // Clean up existing tracked dependencies
-    cleanupEffect(effectFn);
-
-    // Set this effect as active during execution
-    activeEffect = effectFn;
-    effectStack.push(effectFn);
-
-    try {
-      // Run the effect
-      fn();
-    } finally {
-      // Remove from active tracking
-      effectStack.pop();
-      activeEffect = effectStack[effectStack.length - 1] || null;
-    }
-  };
-
-  // Mark as effect and setup tracking
-  effectFn._isEffect = true;
-  effectFn._dependencies = new Set();
-
-  // Run effect immediately
-  effectFn();
-
-  // Return cleanup function
-  return () => {
-    cleanupEffect(effectFn);
-    if (effectFn._cleanup) {
-      effectFn._cleanup();
-    }
-  };
-}
-
-/**
- * Clean up an effect's dependencies
- */
-function cleanupEffect(effectFn: EffectFn): void {
-  // Remove this effect from all tracked dependencies
-  effectFn._dependencies.forEach((deps) => {
-    deps.delete(effectFn);
-  });
-
-  // Clear tracked dependencies
-  effectFn._dependencies.clear();
 }

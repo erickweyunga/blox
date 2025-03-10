@@ -1,5 +1,5 @@
-// packages/core/src/reactivity/computed.ts
-import { effect, State, state } from "./state";
+import { State, state } from "./state";
+import { effect } from "./effect";
 
 /**
  * Computed state interface - a readonly reactive value derived from other state
