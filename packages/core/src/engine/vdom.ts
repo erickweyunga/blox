@@ -1,7 +1,4 @@
-/**
- * VNode Types
- */
-export type VNodeType = string | symbol;
+import { VNode, VNodeProps, VNodeType } from "../types";
 
 /**
  * Symbol used to identify component vnodes
@@ -12,31 +9,6 @@ export const COMPONENT_SYMBOL = Symbol("bloxi.component");
  * Symbol used to identify text vnodes
  */
 export const TEXT_SYMBOL = Symbol("bloxi.text");
-
-/**
- * VNode Properties Interface
- */
-export interface VNodeProps {
-  [key: string]: any;
-  children?: VNode[];
-  _bloxi?: {
-    key?: string | number;
-    ref?: any;
-    events?: Record<string, EventListener>;
-    component?: any;
-    props?: Record<string, any>;
-  };
-}
-
-/**
- * Virtual DOM Node
- */
-export interface VNode {
-  type: VNodeType;
-  props: VNodeProps;
-  children: VNode[];
-  key?: string | number;
-}
 
 /**
  * Create a Virtual DOM node

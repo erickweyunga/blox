@@ -1,27 +1,6 @@
-/**
- * Component lifecycle hooks interface
- */
-export interface LifecycleHooks {
-  /** Called before the component mounts */
-  beforeMount: () => void;
+import { LifecycleHooks } from "../types";
 
-  /** Called after the component has mounted */
-  mounted: () => void;
-
-  /** Called before the component updates */
-  beforeUpdate: () => void;
-
-  /** Called after the component has updated */
-  updated: () => void;
-
-  /** Called before the component unmounts */
-  beforeUnmount: () => void;
-
-  /** Called after the component has unmounted */
-  unmounted: () => void;
-}
-
-// Current component being set up
+// Current component instance being set up
 let currentInstance: any = null;
 
 /**
@@ -48,16 +27,29 @@ export function getCurrentInstance(): any {
 /**
  * Hook for component mounting
  */
-export function onMount(callback: () => void): void {
+export function onMount(callback: () => void | (() => void)): void {
   if (!currentInstance) {
     console.warn("onMount called outside of component setup");
     return;
   }
 
-  const originalMounted = currentInstance.lifecycle.mounted;
-  currentInstance.lifecycle.mounted = () => {
+  // Get current lifecycle hooks
+  const { lifecycle } = currentInstance;
+  const originalMounted = lifecycle.mounted;
+
+  // Replace with enhanced hook that calls the original then our callback
+  lifecycle.mounted = () => {
     originalMounted();
-    callback();
+    const cleanup = callback();
+
+    // If the callback returns a cleanup function, register it
+    if (typeof cleanup === "function") {
+      const originalBeforeUnmount = lifecycle.beforeUnmount;
+      lifecycle.beforeUnmount = () => {
+        cleanup();
+        originalBeforeUnmount();
+      };
+    }
   };
 }
 
@@ -70,10 +62,14 @@ export function onUnmount(callback: () => void): void {
     return;
   }
 
-  const originalUnmounted = currentInstance.lifecycle.unmounted;
-  currentInstance.lifecycle.unmounted = () => {
-    originalUnmounted();
+  // Get current lifecycle hooks
+  const { lifecycle } = currentInstance;
+  const originalBeforeUnmount = lifecycle.beforeUnmount;
+
+  // Replace with enhanced hook
+  lifecycle.beforeUnmount = () => {
     callback();
+    originalBeforeUnmount();
   };
 }
 
@@ -86,8 +82,12 @@ export function onUpdate(callback: () => void): void {
     return;
   }
 
-  const originalUpdated = currentInstance.lifecycle.updated;
-  currentInstance.lifecycle.updated = () => {
+  // Get current lifecycle hooks
+  const { lifecycle } = currentInstance;
+  const originalUpdated = lifecycle.updated;
+
+  // Replace with enhanced hook
+  lifecycle.updated = () => {
     originalUpdated();
     callback();
   };

@@ -1,10 +1,11 @@
-import { component, ComponentOptions, ComponentFactory } from './component/component';
+import { component } from './component/component';
 import { state, State } from './reactivity/state';
 import { effect } from './reactivity/effect';
 import { computed, ComputedState } from './reactivity/computed';
 import { onMount, onUpdate, onUnmount } from './component/lifecycle';
 import { render } from './engine/renderer';
-import { createVNode, VNode, VNodeProps, VNodeType } from './engine/vdom';
+import { createVNode } from './engine/vdom';
+import { ComponentFactory, ComponentOptions, VNode, VNodeProps, VNodeType } from './types';
 
 // Public API exports
 export {

@@ -29,6 +29,11 @@
       "@framework/*": ["packages/*"]
     }
   },
-  "include": ["packages/**/*", "examples/**/*", "examples/app.ts", "webpack.config.js"],
+  "include": [
+    "packages/**/*",
+    "examples/**/*",
+    "examples/app.ts",
+    "webpack.config.js"
+  ],
   "exclude": ["node_modules", "dist"]
 }

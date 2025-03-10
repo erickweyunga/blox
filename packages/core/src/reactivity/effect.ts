@@ -1,4 +1,10 @@
 import { StateSubscribers } from "./state";
+import { scheduleUpdate } from "../engine/renderer";
+import {
+  setCurrentInstance,
+  getCurrentInstance,
+  clearCurrentInstance,
+} from "../component/lifecycle";
 
 /**
  * Effect function type with dependencies tracking
@@ -8,6 +14,7 @@ export type EffectFn = {
   _isEffect: boolean;
   _dependencies: Set<StateSubscribers>;
   _cleanup?: () => void;
+  _instance?: any; // Component instance this effect belongs to
 };
 
 /**
@@ -16,10 +23,8 @@ export type EffectFn = {
 let activeEffect: EffectFn | null = null;
 const effectStack: EffectFn[] = [];
 
-/**
- * Flag to track if rendering is scheduled
- */
-let renderScheduled = false;
+// Re-export lifecycle instance management
+export { setCurrentInstance, getCurrentInstance, clearCurrentInstance };
 
 /**
  * Track the current effect as dependent on the given subscribers
@@ -35,37 +40,56 @@ export function trackEffect(subscribers: StateSubscribers): void {
 }
 
 /**
- * Schedule a DOM update
+ * Trigger all effects subscribed to the state
  */
-function scheduleRender() {
-  if (!renderScheduled) {
-    renderScheduled = true;
-    requestAnimationFrame(() => {
-      // This would call into the renderer to update the DOM
-      // For now we'll just reset the flag
-      renderScheduled = false;
-    });
-  }
+// Add this to the beginning of triggerEffects function
+export function triggerEffects<T>(subscribers: StateSubscribers): void {
+  console.log('🔄 triggerEffects called with', subscribers.size, 'subscribers');
+  
+  // Collect all component instances that need updates
+  const componentInstances = new Set<any>();
+  
+  // Run effects in a new Set to avoid issues if set changes during iteration
+  const effects = new Set(subscribers);
+  effects.forEach(effect => {
+    console.log('  ▶️ Running effect', effect._instance ? 'for component' : 'standalone');
+    
+    // Schedule component update if this effect belongs to a component
+    if (effect._instance) {
+      componentInstances.add(effect._instance);
+    }
+    
+    // Run the effect
+    effect();
+  });
+  
+  // Schedule updates for affected components
+  componentInstances.forEach(instance => {
+    console.log('  📅 Scheduling update for component', instance.def.name);
+    if (instance) {
+      scheduleUpdate(instance);
+    }
+  });
 }
 
 /**
- * Trigger all effects subscribed to the state
+ * Effect options interface
  */
-export function triggerEffects(subscribers: StateSubscribers): void {
-  // Run effects in a new Set to avoid issues if set changes during iteration
-  const effects = new Set(subscribers);
-  effects.forEach((effect) => effect());
-
-  // Schedule a render update
-  scheduleRender();
+export interface EffectOptions {
+  instance?: any;
+  lazy?: boolean;
 }
 
 /**
  * Creates a reactive effect that re-runs when dependencies change
  * @param fn Effect function to run
+ * @param options Options for the effect
  * @returns Cleanup function
  */
-export function effect(fn: () => void): () => void {
+export function effect(
+  fn: () => void,
+  options: EffectOptions = {}
+): () => void {
   // Create effect function with tracking properties
   const effectFn: EffectFn = () => {
     // Clean up existing tracked dependencies
@@ -89,8 +113,21 @@ export function effect(fn: () => void): () => void {
   effectFn._isEffect = true;
   effectFn._dependencies = new Set();
 
-  // Run effect immediately
-  effectFn();
+  // Associate with component instance if provided
+  if (options.instance) {
+    effectFn._instance = options.instance;
+  } else {
+    // Try to get current instance from setup context
+    const currentInstance = getCurrentInstance();
+    if (currentInstance) {
+      effectFn._instance = currentInstance;
+    }
+  }
+
+  // Run effect immediately unless lazy is true
+  if (!options.lazy) {
+    effectFn();
+  }
 
   // Return cleanup function
   return () => {
@@ -115,34 +152,29 @@ function cleanupEffect(effectFn: EffectFn): void {
 }
 
 /**
- * Run an effect once at component initialization (similar to React's useEffect with empty deps)
- * @param fn Effect function to run once
+ * Creates a computed effect that only re-runs when dependencies change and its value is accessed
+ * @param getter Function to compute the value
+ * @returns Computed result
  */
-export function onMount(fn: () => void | (() => void)): void {
-  if (!activeEffect) {
-    console.warn("onMount called outside of component setup");
-    return;
-  }
+export function computed<T>(getter: () => T): { value: T } {
+  let value: T;
+  let dirty = true;
 
-  const cleanup = fn();
-  if (typeof cleanup === "function") {
-    activeEffect._cleanup = cleanup;
-  }
-}
+  const runner = effect(
+    () => {
+      value = getter();
+      dirty = false;
+    },
+    { lazy: true }
+  );
 
-/**
- * Set up an effect to run when component is unmounted
- * @param fn Cleanup function to run on unmount
- */
-export function onUnmount(fn: () => void): void {
-  if (!activeEffect) {
-    console.warn("onUnmount called outside of component setup");
-    return;
-  }
-
-  const originalCleanup = activeEffect._cleanup;
-  activeEffect._cleanup = () => {
-    if (originalCleanup) originalCleanup();
-    fn();
+  return {
+    get value() {
+      if (dirty) {
+        runner();
+      }
+      trackEffect(new Set([runner as unknown as EffectFn]));
+      return value;
+    },
   };
 }

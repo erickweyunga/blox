@@ -1,4 +1,4 @@
-import { EffectFn, trackEffect, triggerEffects } from './effect';
+import { EffectFn, trackEffect, triggerEffects } from "./effect";
 
 /**
  * Subscribers set for state changes
@@ -64,11 +64,9 @@ export function state<T>(initialValue: T): State<T> {
     set value(newValue: T) {
       if (Object.is(internalValue, newValue)) return;
       internalValue = newValue;
-      
+
       // Use queueMicrotask to batch updates for better performance
-      queueMicrotask(() => {
-        triggerEffects(subscribers);
-      });
+      triggerEffects(subscribers);
     },
   };
 

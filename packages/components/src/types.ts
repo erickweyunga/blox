@@ -161,6 +161,17 @@ export interface TextProps extends BaseProps {
 }
 
 /**
+ * Card component props
+ */
+export interface CardProps extends BoxProps {
+  /** Card elevation/shadow level */
+  elevation?: "none" | "sm" | "md" | "lg" | "xl";
+
+  /** Card hover effect */
+  hoverable?: boolean;
+}
+
+/**
  * Button variants
  */
 export type ButtonVariant =

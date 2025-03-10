@@ -1,16 +1,14 @@
-// packages/components/src/index.ts
-
 // Export layout components
 export * from "./layout/box";
-// export * from './layout/flex';
-// export * from './layout/grid';
-// export * from './layout/stack';
+export * from './layout/flex';
+export * from './layout/grid';
+export * from './layout/stack';
 
 // Export UI components
 export * from "./ui/button";
-// export * from './ui/text';
-// export * from './ui/image';
-// export * from './ui/card';
+export * from './ui/typography';
+export * from './ui/image';
+export * from './ui/card';
 
 // Export form components
 // export * from './form/input';

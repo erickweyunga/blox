@@ -1,28 +1,104 @@
-import {
-  VNode,
-  isComponentVNode,
-  // isTextVNode,
-  COMPONENT_SYMBOL,
-  TEXT_SYMBOL,
-} from "./vdom";
+import { isComponentVNode, COMPONENT_SYMBOL, TEXT_SYMBOL } from "./vdom";
 import {
   mountComponent,
   unmountComponent,
-  ComponentInstance,
+  updateComponent,
 } from "../component/component";
-
-/**
- * DOM node instance tracking
- */
-interface DOMInstance {
-  domNode: Node;
-  vNode: VNode;
-  componentInstance?: ComponentInstance;
-  childInstances: DOMInstance[];
-}
 
 // Root instance for the application
 let rootInstance: DOMInstance | null = null;
+
+// Flag to track if a render is scheduled
+let isRenderScheduled = false;
+
+// Queue of instances that need updating
+const updateQueue: Set<ComponentInstance> = new Set();
+
+/**
+ * Schedule a render update
+ */
+export function scheduleUpdate(instance: ComponentInstance): void {
+  // Add to update queue
+  updateQueue.add(instance);
+
+  // Schedule render if not already scheduled
+  if (!isRenderScheduled) {
+    isRenderScheduled = true;
+
+    queueMicrotask(() => {
+      processUpdates();
+    });
+  }
+}
+
+/**
+ * Process all queued updates
+ */
+function processUpdates(): void {
+  console.log("📋 Processing updates for", updateQueue.size, "components");
+  isRenderScheduled = false;
+
+  // Create a stable snapshot of components to update
+  const instances = Array.from(updateQueue);
+  updateQueue.clear();
+
+  // Process each instance
+  instances.forEach((instance) => {
+    console.log(
+      "  🔄 Processing update for component",
+      instance.def.name,
+      "mounted:",
+      instance.isMounted
+    );
+
+    // Skip if instance is no longer mounted
+    if (!instance.isMounted) {
+      console.log("    ❌ Skipping unmounted component");
+      return;
+    }
+
+    // Check if vnode exists
+    console.log("    📄 Current vnode:", instance.vnode ? "exists" : "missing");
+
+    // Force re-render
+    if (instance.cleanup) {
+      console.log("    🧹 Cleaning up previous effect");
+      // Call cleanup function to remove previous effect
+      const oldCleanup = instance.cleanup;
+      instance.cleanup = null;
+      try {
+        oldCleanup();
+      } catch (err) {
+        console.error("      ❌ Error in cleanup:", err);
+      }
+
+      try {
+        // Create a new render effect function
+        console.log("    🔄 Creating new render effect");
+        const newRenderEffect = () => {
+          console.log("      📄 Rendering component", instance.def.name);
+          const newVNode = instance.def.render(instance.setupResult);
+          console.log("      🔄 New vnode created:", newVNode ? "yes" : "no");
+          instance.vnode = newVNode;
+          console.log("      ✅ Render complete");
+          return newVNode;
+        };
+
+        // Re-create the effect
+        console.log("    🔧 Setting up new effect for component");
+        instance.cleanup = effect(newRenderEffect, { instance });
+      } catch (err) {
+        console.error("      ❌ Error in rendering:", err);
+      }
+    } else {
+      console.log("    ⚠️ No cleanup function found for component");
+    }
+  });
+}
+
+// Import effect from reactivity
+import { effect } from "../reactivity/effect";
+import { ComponentInstance, DOMInstance, VNode } from "../types";
 
 /**
  * Render a virtual DOM tree to a DOM container
@@ -44,10 +120,18 @@ function reconcile(
   instance: DOMInstance | null,
   vnode: VNode | null
 ): DOMInstance | null {
+  console.log(
+    "🔄 Reconciling:",
+    instance ? instance.vNode.type.toString() : "null",
+    "to",
+    vnode ? vnode.type.toString() : "null"
+  );
+
   // No previous instance, create a new one
   if (instance === null) {
     if (!vnode) return null;
 
+    console.log("  🆕 Creating new DOM instance");
     // Create new DOM instance
     const newInstance = createDOMInstance(vnode, parentDom);
     return newInstance;
@@ -55,24 +139,49 @@ function reconcile(
 
   // No new vnode, remove the DOM node
   if (vnode === null) {
+    console.log("  🗑️ Removing DOM instance");
     unmountDOMInstance(instance);
-    parentDom.removeChild(instance.domNode);
+
+    // Critical fix: Only remove if it's a child of the parent
+    if (instance.domNode.parentNode === parentDom) {
+      parentDom.removeChild(instance.domNode);
+    }
     return null;
   }
 
   // Both exist, update if needed
   if (instance.vNode.type === vnode.type) {
     // Same type, update in place
+    console.log("  🔄 Updating existing DOM instance in place");
     updateDOMInstance(instance, vnode);
     return instance;
   } else {
     // Different types, replace completely
+    console.log("  🔄 Replacing DOM instance with new type");
     const newInstance = createDOMInstance(vnode, parentDom);
 
     // Replace the old node
     if (instance.domNode.parentNode) {
       unmountDOMInstance(instance);
-      parentDom.replaceChild(newInstance.domNode, instance.domNode);
+
+      try {
+        // Critical fix: Only replace if it's a child of the parent
+        if (instance.domNode.parentNode === parentDom) {
+          parentDom.replaceChild(newInstance.domNode, instance.domNode);
+        } else {
+          console.log("  ⚠️ Cannot replace node: not a child of parent");
+          // Append the new instance instead
+          parentDom.appendChild(newInstance.domNode);
+        }
+      } catch (err) {
+        console.error("  ❌ Error replacing node:", err);
+        // Fallback: append the new node
+        parentDom.appendChild(newInstance.domNode);
+      }
+    } else {
+      // If old node isn't in the DOM, just append the new one
+      console.log("  📎 Old node not in parent, appending new node");
+      parentDom.appendChild(newInstance.domNode);
     }
 
     return newInstance;
@@ -93,10 +202,7 @@ function createDOMInstance(vnode: VNode, parentDom: Node | null): DOMInstance {
     domNode = document.createTextNode(String(vnode.props.nodeValue || ""));
   } else if (vnode.type === COMPONENT_SYMBOL) {
     // Component node
-    componentInstance = mountComponent(
-      vnode
-      // parentDom as HTMLElement
-    );
+    componentInstance = mountComponent(vnode, parentDom as HTMLElement);
     const renderedVNode = componentInstance.vnode;
 
     if (!renderedVNode) {
@@ -140,40 +246,60 @@ function createDOMInstance(vnode: VNode, parentDom: Node | null): DOMInstance {
  * Update a DOM instance with a new vnode
  */
 function updateDOMInstance(instance: DOMInstance, newVNode: VNode): void {
-  // Handle different node types
-  if (instance.vNode.type === TEXT_SYMBOL && newVNode.type === TEXT_SYMBOL) {
-    // Update text node
-    if (instance.vNode.props.nodeValue !== newVNode.props.nodeValue) {
-      (instance.domNode as Text).nodeValue = String(
-        newVNode.props.nodeValue || ""
-      );
-    }
-  } else if (
+  console.log(
+    "🔄 updateDOMInstance called for type:",
+    typeof newVNode.type === "symbol" ? newVNode.type.toString() : newVNode.type
+  );
+
+  // Check if this is a component node
+  if (
     instance.vNode.type === COMPONENT_SYMBOL &&
     newVNode.type === COMPONENT_SYMBOL
   ) {
-    // Update component
+    console.log("🧩 Updating component instance");
     if (instance.componentInstance) {
-      // Update component props
-      instance.componentInstance.props = newVNode.props._bloxi?.props || {};
-
-      // The component will re-render automatically through its effect
+      // Get the latest rendered vnode
       const renderedVNode = instance.componentInstance.vnode;
+      console.log("📑 Component rendered vnode exists:", !!renderedVNode);
 
+      // Check children
+      if (instance.childInstances.length > 0) {
+        console.log(
+          "👶 Child instances count:",
+          instance.childInstances.length
+        );
+      } else {
+        console.log("⚠️ No child instances found for component");
+      }
+
+      // Update the DOM for the rendered output
       if (renderedVNode && instance.childInstances.length > 0) {
-        // Update the DOM for the rendered output
+        console.log("🔄 Updating child DOM instance with rendered vnode");
         updateDOMInstance(instance.childInstances[0], renderedVNode);
       }
     }
-  } else {
-    // Regular DOM element
-    const domElement = instance.domNode as HTMLElement;
+  } else if (
+    instance.vNode.type !== COMPONENT_SYMBOL &&
+    newVNode.type !== COMPONENT_SYMBOL
+  ) {
+    console.log("📌 Updating regular DOM element of type:", newVNode.type);
 
-    // Diff and update attributes
-    updateDOMAttributes(domElement, instance.vNode, newVNode);
+    // Log children
+    console.log("👶 Children count:", newVNode.children.length);
 
-    // Update children using reconciliation
-    updateChildren(domElement, instance.childInstances, newVNode.children);
+    // Check if node is actually in the DOM
+    if (instance.domNode.parentNode) {
+      console.log("✅ DOM node is in the document");
+    } else {
+      console.log("❌ DOM node is NOT in the document");
+    }
+
+    // Update children
+    updateChildren(
+      instance.domNode as HTMLElement,
+      instance.childInstances,
+      newVNode.children
+    );
   }
 
   // Update the stored vnode
@@ -299,6 +425,15 @@ function updateChildren(
   childInstances: DOMInstance[],
   childVNodes: VNode[]
 ): DOMInstance[] {
+  // Add debug logs
+  console.log(
+    "🔄 Updating children",
+    "current DOM children:",
+    childInstances.length,
+    "new virtual children:",
+    childVNodes.length
+  );
+
   const newChildInstances: DOMInstance[] = [];
   const maxLength = Math.max(childInstances.length, childVNodes.length);
 
@@ -307,11 +442,52 @@ function updateChildren(
     const childInstance = i < childInstances.length ? childInstances[i] : null;
     const childVNode = i < childVNodes.length ? childVNodes[i] : null;
 
-    // Reconcile this child
-    const newChildInstance = reconcile(parentDom, childInstance, childVNode);
+    // Log each child update
+    console.log(
+      `  Child ${i}:`,
+      childInstance ? "exists in DOM" : "new",
+      childVNode ? "exists in vDOM" : "removed"
+    );
 
-    if (newChildInstance) {
+    // Special case: If childInstance exists but childVNode is null, we need to REMOVE the DOM node
+    if (childInstance && !childVNode) {
+      console.log(`  🗑️ Removing child ${i} from DOM`);
+      unmountDOMInstance(childInstance);
+
+      // Critical fix: Remove the actual DOM node from the parent
+      if (childInstance.domNode.parentNode === parentDom) {
+        parentDom.removeChild(childInstance.domNode);
+      }
+      continue; // Skip to next child
+    }
+
+    // Special case: If childVNode exists but childInstance is null, create a new DOM node
+    if (!childInstance && childVNode) {
+      console.log(`  🆕 Creating new child ${i} for DOM`);
+      const newChildInstance = createDOMInstance(childVNode, parentDom);
+
+      // Critical fix: Make sure the new DOM node is appended to the parent
+      if (!parentDom.contains(newChildInstance.domNode)) {
+        parentDom.appendChild(newChildInstance.domNode);
+      }
+
       newChildInstances.push(newChildInstance);
+      continue; // Skip to next child
+    }
+
+    // Both exist, so reconcile normally
+    if (childInstance && childVNode) {
+      console.log(`  🔄 Reconciling child ${i}`);
+      const newChildInstance = reconcile(parentDom, childInstance, childVNode);
+
+      if (newChildInstance) {
+        // Make sure the DOM node is actually in the parent (critical fix)
+        if (!parentDom.contains(newChildInstance.domNode)) {
+          console.log(`  📎 Appending child ${i} to parent`);
+          parentDom.appendChild(newChildInstance.domNode);
+        }
+        newChildInstances.push(newChildInstance);
+      }
     }
   }
 
